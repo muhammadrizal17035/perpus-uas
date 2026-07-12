@@ -8,11 +8,6 @@ RUN apt-get update && apt-get install -y \
     git \
     && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl gd
 
-RUN a2dismod mpm_event 2>/dev/null; \
-    a2dismod mpm_worker 2>/dev/null; \
-    a2enmod mpm_prefork; \
-    a2enmod rewrite
-
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
@@ -21,6 +16,13 @@ COPY . .
 RUN composer install --optimize-autoloader --no-dev --no-interaction
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Matikan semua MPM yang mungkin ke-enable, lalu aktifkan HANYA prefork
+RUN find /etc/apache2/mods-enabled/ -name "mpm_*" -delete
+RUN ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load
+RUN ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
+
+RUN a2enmod rewrite
 
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
