@@ -1,12 +1,14 @@
-FROM php:8.2-apache
+FROM php:8.2-fpm
 
 RUN apt-get update && apt-get install -y \
+    nginx \
     libzip-dev \
     libpng-dev \
     libonig-dev \
     unzip \
     git \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl gd
+    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -17,13 +19,10 @@ RUN composer install --optimize-autoloader --no-dev --no-interaction
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Matikan semua MPM yang mungkin ke-enable, lalu aktifkan HANYA prefork
-RUN find /etc/apache2/mods-enabled/ -name "mpm_*" -delete
-RUN ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load
-RUN ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
-
-RUN a2enmod rewrite
-
-RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
+COPY nginx.conf /etc/nginx/sites-available/default
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 EXPOSE 80
+
+CMD ["/start.sh"]
