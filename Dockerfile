@@ -17,6 +17,8 @@ RUN composer install --optimize-autoloader --no-dev --no-interaction
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+RUN a2dismod mpm_event || true
+RUN a2enmod mpm_prefork
 RUN a2enmod rewrite
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
